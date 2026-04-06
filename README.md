@@ -1,0 +1,25 @@
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
+
+# Run and deploy your AI Studio app
+
+This contains everything you need to run your app locally.
+
+View your app in AI Studio: https://ai.studio/apps/eb27641d-f21d-4a2d-8ea8-b99855a68d74
+
+## Run Locally
+
+**Prerequisites:** Node.js
+
+1. Install dependencies: `npm install`
+2. Copy [.env.example](.env.example) to `.env.local` and set `GEMINI_API_KEY` (used only by Vercel serverless locally, not bundled into the browser).
+3. **Full stack (UI + `/api/*`):** install the [Vercel CLI](https://vercel.com/docs/cli), run `vercel link` once, then `vercel dev`. Gemini calls run on the server; the key stays in environment variables.
+4. **Vite only:** `npm run dev` — the UI runs, but music and ambiance generation will fail until API routes are reachable (use `vercel dev` for generation).
+
+## Deploy on Vercel
+
+1. Push this repo to GitHub and import the project in the [Vercel dashboard](https://vercel.com/new).
+2. Framework: **Vite** (build: `npm run build`, output: `dist`).
+3. In **Settings → Environment Variables**, add `GEMINI_API_KEY` for Production and Preview (and Local if you use `vercel dev` with linked env).
+4. Deploy. Serverless functions live under `/api/music` and `/api/ambiance`; the API key is never exposed to the client bundle.
