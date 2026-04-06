@@ -111,7 +111,7 @@ export default function App() {
                 className="mb-8 inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-indigo-400 text-sm font-medium"
               >
                 <Sparkles size={16} />
-                <span>Powered by Gemini & Lyria Pro</span>
+                <span>Powered by your fav Frenchman</span>
               </motion.div>
               
               <motion.h1 
