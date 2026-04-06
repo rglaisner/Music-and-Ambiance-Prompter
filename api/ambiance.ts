@@ -1,6 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { parseJsonBody, requireApiKey, sendError } from './_lib/http';
+import { parseJsonBody, requireApiKey, sendError } from '../lib/server/http';
+
+export const config = {
+  maxDuration: 120,
+};
 
 interface AmbianceRequestBody {
   prompt?: unknown;
@@ -70,6 +74,7 @@ export default async function handler(
 
     sendError(res, 502, 'No image data received from the model.');
   } catch (error: unknown) {
+    console.error('[api/ambiance]', error);
     const message =
       error instanceof Error ? error.message : 'Ambiance generation failed';
     sendError(res, 502, message);

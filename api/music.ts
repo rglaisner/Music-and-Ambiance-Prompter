@@ -1,9 +1,17 @@
 import { GoogleGenAI } from '@google/genai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { parseJsonBody, requireApiKey, sendError } from './_lib/http';
+import { parseJsonBody, requireApiKey, sendError } from '../lib/server/http';
+
+/** Long Lyria runs need a high limit; Hobby plan caps this (often 10s)—use Pro for full tracks. */
+export const config = {
+  maxDuration: 300,
+};
 
 const MUSIC_MODELS = ['lyria-3-clip-preview', 'lyria-3-pro-preview'] as const;
 type MusicModel = (typeof MUSIC_MODELS)[number];
+
+/** Vercel serverless JSON responses are limited (~4.5 MB); base64 inflates size. */
+const MAX_AUDIO_RESPONSE_BYTES = 4 * 1024 * 1024;
 
 function isMusicModel(value: unknown): value is MusicModel {
   return typeof value === 'string' && MUSIC_MODELS.includes(value as MusicModel);
@@ -90,8 +98,19 @@ export default async function handler(
       return;
     }
 
+    const approxDecodedBytes = Math.floor((audioBase64.length * 3) / 4);
+    if (approxDecodedBytes > MAX_AUDIO_RESPONSE_BYTES) {
+      sendError(
+        res,
+        413,
+        'Generated audio is too large for a single response on this host. Try Lyria clip preview, a shorter prompt, or a deployment with larger payloads / object storage.',
+      );
+      return;
+    }
+
     res.status(200).json({ lyrics, mimeType, audioBase64 });
   } catch (error: unknown) {
+    console.error('[api/music]', error);
     const message =
       error instanceof Error ? error.message : 'Music generation failed';
     sendError(res, 502, message);
