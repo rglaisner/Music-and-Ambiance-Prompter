@@ -1,6 +1,6 @@
 import { GoogleGenAI, Modality } from '@google/genai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { parseJsonBody, requireApiKey, sendError } from '../lib/server/http';
+import { parseJsonBody, requireApiKey, sendError } from './lib/http.js';
 
 /** Long Lyria runs need a high limit; Hobby plan caps this (often 10s)—use Pro for full tracks. */
 export const config = {
