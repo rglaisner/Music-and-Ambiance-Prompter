@@ -109,7 +109,7 @@ export default function App() {
                 className="mb-8 inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-indigo-400 text-sm font-medium"
               >
                 <Sparkles size={16} />
-                <span>Powered by Remy (what else?)</span>
+                <span>Powered by you one and only,Remy</span>
               </motion.div>
 
               <motion.h1
@@ -128,7 +128,7 @@ export default function App() {
                 className="text-xl text-gray-400 mb-12 leading-relaxed"
               >
                 Architect full-length music tracks through a layered cascading choice system.
-                Listem back in a focused player with lyrics.
+                Listen back in a focused player with lyrics.
               </motion.p>
 
               <motion.button
