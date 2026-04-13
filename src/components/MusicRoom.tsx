@@ -72,7 +72,7 @@ export default function MusicRoom({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'sonic-architect-track.wav';
+    a.download = 'sonic-architect-track.mp3';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

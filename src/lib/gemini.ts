@@ -53,7 +53,7 @@ export async function generateMusic(
   const mimeType =
     typeof payload.mimeType === 'string' && payload.mimeType
       ? payload.mimeType
-      : 'audio/wav';
+      : 'audio/mpeg';
   const lyrics =
     typeof payload.lyrics === 'string' ? payload.lyrics : '';
 

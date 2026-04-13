@@ -78,7 +78,7 @@ export default async function handler(
 
     let audioBase64 = '';
     let lyrics = '';
-    let mimeType = 'audio/wav';
+    let mimeType = 'audio/mpeg';
 
     for await (const chunk of response) {
       const parts = chunk.candidates?.[0]?.content?.parts;
