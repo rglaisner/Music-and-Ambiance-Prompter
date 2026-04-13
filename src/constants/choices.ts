@@ -1,5 +1,14 @@
 export type ExpertiseLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 
+/** Layer IDs omitted when purely instrumental. */
+export const INSTRUMENTAL_SKIP_LAYER_IDS: readonly string[] = [
+  'lyrics-language',
+  'lyricContent',
+  'lyric-style',
+  'contentRating',
+  'vocal-delivery',
+] as const;
+
 export interface ChoiceOption {
   id: string;
   label: string;
@@ -14,6 +23,12 @@ export interface ChoiceLayer {
   group: 'Core Architecture' | 'Instrumentation' | 'Vocal Architecture' | 'Final Mix';
   multiSelect?: boolean;
   hasRoles?: boolean;
+  maxSelections?: number;
+  featuredOptionIds?: string[];
+  beginnerTitle?: string;
+  beginnerQuestion?: string;
+  layerHint?: string;
+  defaultForBeginner?: string | string[];
   minExpertise: ExpertiseLevel;
   options: ChoiceOption[];
   presets?: string[]; // For text type "pick for me"
@@ -25,6 +40,12 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "genre",
     title: "Primary Genre",
     question: "What is the foundation of your sound?",
+    beginnerTitle: "Genre",
+    beginnerQuestion:
+      "Pick a main genre and up to one cross-influence (max 2). What foundation should the track sit on?",
+    layerHint: "This steers rhythm, instrumentation, and overall production clichés the model reaches for.",
+    maxSelections: 2,
+    featuredOptionIds: ['electronic', 'rock', 'hiphop', 'ambient', 'jazz', 'soul'],
     group: 'Core Architecture',
     multiSelect: true,
     minExpertise: 'Beginner',
@@ -47,6 +68,11 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "subgenre",
     title: "Stylistic Refinement",
     question: "Narrow down the specific sub-genre or style.",
+    beginnerTitle: "Sub-style",
+    beginnerQuestion: "Optional: add a more specific flavor (max 2).",
+    layerHint: "Narrows arrangement clichés (e.g. lo-fi vs techno) without replacing your main genre.",
+    maxSelections: 2,
+    featuredOptionIds: ['synthwave', 'lofi', 'techno', 'neo-soul', 'indie-folk', 'afrobeat'],
     group: 'Core Architecture',
     multiSelect: true,
     minExpertise: 'Intermediate',
@@ -69,6 +95,10 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "intensity",
     title: "Intensity & Pace",
     question: "How fast and energetic should the track be?",
+    beginnerTitle: "Energy & tempo",
+    beginnerQuestion: "How fast and energetic should it feel?",
+    layerHint: "Sets implied BPM range and how busy the rhythm section should be.",
+    defaultForBeginner: 'steady',
     group: 'Core Architecture',
     minExpertise: 'Beginner',
     options: [
@@ -83,6 +113,12 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "emotional",
     title: "Emotional Architecture",
     question: "What is the core emotional arc of the music and lyrics?",
+    beginnerTitle: "Mood",
+    beginnerQuestion: "What’s the dominant mood? You can add a second (max 2).",
+    layerHint: "Drives harmonic tension, lyric tone, and how bright or heavy the mix feels.",
+    maxSelections: 2,
+    featuredOptionIds: ['hopeful', 'melancholic', 'euphoric', 'dark', 'bittersweet', 'serene'],
+    defaultForBeginner: ['hopeful'],
     group: 'Core Architecture',
     multiSelect: true,
     minExpertise: 'Beginner',
@@ -100,6 +136,9 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "composition",
     title: "Compositional Depth",
     question: "How intricate should the musical and harmonic foundation be?",
+    beginnerTitle: "Harmony & complexity",
+    beginnerQuestion: "How intricate should chords and scales feel?",
+    layerHint: "Rough guide for modality (major/minor) and how ‘busy’ harmony should be.",
     group: 'Core Architecture',
     minExpertise: 'Advanced',
     options: [
@@ -114,6 +153,18 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "cultural-era",
     title: "Cultural & Era Influence",
     question: "Which time period or regional flavor should it echo?",
+    beginnerTitle: "Era & region",
+    beginnerQuestion: "Any era or regional flavor to lean into (max 2)?",
+    layerHint: "Colors production choices (tape warmth, drum machines, scale flavors).",
+    maxSelections: 2,
+    featuredOptionIds: [
+      'modern-global',
+      '80s-retro',
+      '70s-analog',
+      'futuristic-unheard',
+      'latin-passionate',
+      'east-asian-zen',
+    ],
     group: 'Core Architecture',
     multiSelect: true,
     minExpertise: 'Intermediate',
@@ -134,6 +185,11 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "ensemble",
     title: "Instrumentation Ensemble",
     question: "Which instruments should lead and support the track? Select a role for each.",
+    beginnerTitle: "Who’s in the band",
+    beginnerQuestion: "What instrument families should show up? Pick a mix role for each.",
+    layerHint:
+      "Roles mean mix priority: lead = featured up front, rhythm = groove bed, bass = low-end anchor, harmony = pads & doubles.",
+    featuredOptionIds: ['synths-digital', 'drums-percussion', 'acoustic-organic', 'electric-gritty'],
     group: 'Instrumentation',
     multiSelect: true,
     hasRoles: true,
@@ -153,6 +209,18 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "vocal-identity",
     title: "Vocal Identity & Tone",
     question: "Define the character and delivery of the voice.",
+    beginnerTitle: "Vocals",
+    beginnerQuestion: "Instrumental only, or what vocal character should we aim for?",
+    layerHint:
+      "Choosing “Purely Instrumental” skips lyric language and story steps so the path stays short.",
+    featuredOptionIds: [
+      'none',
+      'male-warm',
+      'female-ethereal',
+      'choral-harmonic',
+      'processed-robotic',
+      'spoken-monotone',
+    ],
     group: 'Vocal Architecture',
     multiSelect: true,
     minExpertise: 'Beginner',
@@ -171,6 +239,10 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "lyrics-language",
     title: "Lyrics Language",
     question: "In what tongue should the story be told?",
+    beginnerTitle: "Lyric language",
+    beginnerQuestion: "What language should the lyrics be in?",
+    layerHint: "Lyria follows the language you specify here in the final prompt.",
+    featuredOptionIds: ['english', 'spanish', 'french', 'japanese', 'korean', 'portuguese'],
     group: 'Vocal Architecture',
     minExpertise: 'Intermediate',
     options: [
@@ -193,6 +265,9 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "lyricContent",
     title: "Lyrical Content & Imagery",
     question: "Describe the story, themes, and specific imagery you want in the lyrics in detail.",
+    beginnerTitle: "Lyric story & imagery",
+    beginnerQuestion: "What story or images should the lyrics lean on? (Creative direction, not final lyrics.)",
+    layerHint: "This is a brief to the model—not words to sing verbatim unless you write it that way.",
     group: 'Vocal Architecture',
     type: 'text',
     minExpertise: 'Beginner',
@@ -210,6 +285,9 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "lyric-style",
     title: "Lyric Style",
     question: "What is the structural and narrative approach of the lyrics?",
+    beginnerTitle: "Lyric structure",
+    beginnerQuestion: "How should lines be structured narratively?",
+    layerHint: "Storytelling vs abstract poetry changes pacing and rhyme density.",
     group: 'Vocal Architecture',
     minExpertise: 'Advanced',
     options: [
@@ -224,6 +302,9 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "vocal-delivery",
     title: "Vocal Perspective & Style",
     question: "How are the words delivered and to whom?",
+    beginnerTitle: "Point of view",
+    beginnerQuestion: "Who is speaking, and how direct is the delivery?",
+    layerHint: "First vs second person changes intimacy; rap flow changes syllable density.",
     group: 'Vocal Architecture',
     minExpertise: 'Expert',
     options: [
@@ -238,6 +319,9 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "contentRating",
     title: "Content Rating",
     question: "What is the lyrical intensity and explicitness?",
+    beginnerTitle: "Explicitness",
+    beginnerQuestion: "How family-friendly should the lyrics be?",
+    layerHint: "Sets how raw language and themes can get.",
     group: 'Vocal Architecture',
     minExpertise: 'Advanced',
     options: [
@@ -250,6 +334,9 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "percussion-elements",
     title: "Beatbox & Percussion",
     question: "Should human percussion or unique beats be integrated?",
+    beginnerTitle: "Human percussion",
+    beginnerQuestion: "Any beatboxing or mouth-percussion in the track?",
+    layerHint: "Adds organic transient texture on top of drum machines or live drums.",
     group: 'Vocal Architecture',
     minExpertise: 'Expert',
     options: [
@@ -265,6 +352,9 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "composition-form",
     title: "Compositional Form",
     question: "How should the track be structured and arranged?",
+    beginnerTitle: "Song form",
+    beginnerQuestion: "How should sections build and repeat?",
+    layerHint: "Guides whether hooks return often vs through-composed evolution.",
     group: 'Final Mix',
     minExpertise: 'Advanced',
     options: [
@@ -279,6 +369,9 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     id: "sonic-texture",
     title: "Sonic Texture & Dynamics",
     question: "What are the final production and dynamic characteristics?",
+    beginnerTitle: "Mix texture",
+    beginnerQuestion: "Overall loudness, space, and dynamics—polished vs raw?",
+    layerHint: "Think loudness + reverb + saturation: ‘hifi loud’ vs ‘dynamic & roomy’.",
     group: 'Final Mix',
     minExpertise: 'Expert',
     options: [
