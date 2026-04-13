@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft, Sparkles, Music, RefreshCw, Layers } from 'lucide-react';
-import { MUSIC_LAYERS, ExpertiseLevel } from '../constants/choices';
-import { buildMasterPrompt, type LayerSelectionValue } from '../lib/masterPrompt';
+import {
+  INSTRUMENTAL_SKIP_LAYER_IDS,
+  MUSIC_LAYERS,
+  type ChoiceLayer,
+  type ExpertiseLevel,
+} from '../constants/choices';
+import {
+  buildMasterPrompt,
+  isInstrumentalOnlySelection,
+  type LayerSelectionValue,
+} from '../lib/masterPrompt';
 import { cn } from '../lib/utils';
 import {
   clearStoredBlobPathname,
@@ -17,6 +26,24 @@ const EXPERTISE_HIERARCHY: Record<ExpertiseLevel, number> = {
   Intermediate: 2,
   Advanced: 3,
   Expert: 4,
+};
+
+function orderLayersForBeginner(layers: ChoiceLayer[]): ChoiceLayer[] {
+  const intensity = layers.find((l) => l.id === 'intensity');
+  const genre = layers.find((l) => l.id === 'genre');
+  const rest = layers.filter((l) => l.id !== 'intensity' && l.id !== 'genre');
+  const out: ChoiceLayer[] = [];
+  if (intensity) out.push(intensity);
+  if (genre) out.push(genre);
+  out.push(...rest);
+  return out;
+}
+
+const ROLE_HINTS: Record<string, string> = {
+  lead: 'Featured up front in the mix',
+  rhythm: 'Groove and pulse bed',
+  bass: 'Low-end anchor',
+  harmony: 'Pads, doubles, and wideners',
 };
 
 interface WizardProps {
@@ -48,16 +75,126 @@ export default function Wizard({ onComplete }: WizardProps) {
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [textInput, setTextInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showAllOptions, setShowAllOptions] = useState(false);
+  const [showLayerHint, setShowLayerHint] = useState(false);
+  const [chapterIntro, setChapterIntro] = useState<string | null>(null);
+  const [showAllLyricPresets, setShowAllLyricPresets] = useState(false);
 
   const filteredLayers = React.useMemo(() => {
     if (!expertise) return [];
     const level = EXPERTISE_HIERARCHY[expertise];
-    return MUSIC_LAYERS.filter(
+    let layers = MUSIC_LAYERS.filter(
       (layer) => EXPERTISE_HIERARCHY[layer.minExpertise] <= level,
     );
-  }, [expertise]);
+    const vocalLayer = layers.find((l) => l.id === 'vocal-identity');
+    if (isInstrumentalOnlySelection(vocalLayer, selections['vocal-identity'])) {
+      const skip = new Set(INSTRUMENTAL_SKIP_LAYER_IDS);
+      layers = layers.filter((layer) => !skip.has(layer.id));
+    }
+    if (expertise === 'Beginner') {
+      layers = orderLayersForBeginner(layers);
+    }
+    return layers;
+  }, [expertise, selections]);
 
   const currentLayer = filteredLayers[currentStep];
+
+  const visibleOptions = React.useMemo(() => {
+    if (!currentLayer || currentLayer.type === 'text') {
+      return [];
+    }
+    const featured = currentLayer.featuredOptionIds;
+    if (!featured || showAllOptions) {
+      return currentLayer.options;
+    }
+    const selectedRaw = selections[currentLayer.id];
+    const selectedIds = new Set<string>();
+    if (Array.isArray(selectedRaw)) {
+      selectedRaw.forEach((id) => selectedIds.add(id));
+    } else if (currentLayer.hasRoles && selectedRaw && typeof selectedRaw === 'object') {
+      Object.keys(selectedRaw as Record<string, string>).forEach((id) => selectedIds.add(id));
+    } else if (typeof selectedRaw === 'string') {
+      selectedIds.add(selectedRaw);
+    }
+    return currentLayer.options.filter(
+      (option) => featured.includes(option.id) || selectedIds.has(option.id),
+    );
+  }, [currentLayer, showAllOptions, selections]);
+
+  const mixClashHint = React.useMemo(() => {
+    const genreIds = (selections['genre'] as string[] | undefined) ?? [];
+    const intensityId = selections['intensity'];
+    if (typeof intensityId !== 'string') {
+      return null;
+    }
+    if (genreIds.includes('ambient') && intensityId === 'explosive') {
+      return 'Ambient palette with explosive energy can work as contrast—if you wanted space, try a calmer energy step.';
+    }
+    return null;
+  }, [selections]);
+
+  useEffect(() => {
+    if (currentLayer) {
+      const currentSelection = selections[currentLayer.id];
+      setTextInput(typeof currentSelection === 'string' ? currentSelection : '');
+    }
+  }, [currentStep, currentLayer, selections]);
+
+  const prevFilteredLenRef = React.useRef(filteredLayers.length);
+
+  useEffect(() => {
+    const prev = prevFilteredLenRef.current;
+    const next = filteredLayers.length;
+    if (next < prev) {
+      setCurrentStep((step) => {
+        if (step === prev) {
+          return next;
+        }
+        if (step >= next && step < prev) {
+          return Math.max(0, next - 1);
+        }
+        return step;
+      });
+    }
+    prevFilteredLenRef.current = next;
+  }, [filteredLayers.length]);
+
+  const prevGroupRef = React.useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!currentLayer) {
+      return;
+    }
+    const nextGroup = currentLayer.group;
+    if (prevGroupRef.current !== null && prevGroupRef.current !== nextGroup) {
+      setChapterIntro(nextGroup);
+      const timeoutId = window.setTimeout(() => setChapterIntro(null), 3200);
+      prevGroupRef.current = nextGroup;
+      return () => window.clearTimeout(timeoutId);
+    }
+    prevGroupRef.current = nextGroup;
+  }, [currentLayer, currentStep]);
+
+  useEffect(() => {
+    setShowAllOptions(false);
+    setShowLayerHint(false);
+    setShowAllLyricPresets(false);
+  }, [currentStep]);
+
+  useEffect(() => {
+    if (expertise !== 'Beginner' || !currentLayer || currentLayer.defaultForBeginner === undefined) {
+      return;
+    }
+    setSelections((prev) => {
+      if (prev[currentLayer.id] !== undefined) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [currentLayer.id]: currentLayer.defaultForBeginner as LayerSelectionValue,
+      };
+    });
+  }, [currentStep, currentLayer, expertise]);
 
   if (expertise && !currentLayer && currentStep < filteredLayers.length) {
     return (
@@ -75,13 +212,6 @@ export default function Wizard({ onComplete }: WizardProps) {
     );
   }
 
-  useEffect(() => {
-    if (currentLayer) {
-      const currentSelection = selections[currentLayer.id];
-      setTextInput(typeof currentSelection === 'string' ? currentSelection : '');
-    }
-  }, [currentStep, currentLayer, selections]);
-
   const handleExpertiseSelect = (level: ExpertiseLevel) => {
     setExpertise(level);
     setCurrentStep(0);
@@ -91,6 +221,25 @@ export default function Wizard({ onComplete }: WizardProps) {
 
   const handleSelect = (optionId: string) => {
     if (!currentLayer) return;
+
+    if (currentLayer.id === 'vocal-identity') {
+      if (optionId === 'none') {
+        const nextSelections: Record<string, LayerSelectionValue> = {
+          ...selections,
+          [currentLayer.id]: ['none'],
+        };
+        setSelections(nextSelections);
+        return;
+      }
+      const current = (selections[currentLayer.id] as string[] | undefined) || [];
+      const withoutNone = current.filter((id) => id !== 'none');
+      const updated = withoutNone.includes(optionId)
+        ? withoutNone.filter((id) => id !== optionId)
+        : [...withoutNone, optionId];
+      setSelections((prev) => ({ ...prev, [currentLayer.id]: updated }));
+      return;
+    }
+
     if (currentLayer.hasRoles) {
       const current =
         (selections[currentLayer.id] as Record<string, string> | undefined) || {};
@@ -102,10 +251,13 @@ export default function Wizard({ onComplete }: WizardProps) {
       }
       setSelections((prev) => ({ ...prev, [currentLayer.id]: updated }));
     } else if (currentLayer.multiSelect) {
+      const max = currentLayer.maxSelections ?? Number.POSITIVE_INFINITY;
       const current = (selections[currentLayer.id] as string[] | undefined) || [];
       const updated = current.includes(optionId)
         ? current.filter((id) => id !== optionId)
-        : [...current, optionId];
+        : current.length >= max
+          ? current
+          : [...current, optionId];
       setSelections((prev) => ({ ...prev, [currentLayer.id]: updated }));
     } else {
       const nextSelections: Record<string, LayerSelectionValue> = {
@@ -179,7 +331,8 @@ export default function Wizard({ onComplete }: WizardProps) {
           generateInitialPrompt(nextRoles);
         }
       } else if (currentLayer.multiSelect) {
-        const count = Math.floor(Math.random() * 2) + 1;
+        const max = currentLayer.maxSelections ?? 6;
+        const count = Math.max(1, Math.min(max, Math.floor(Math.random() * max) + 1));
         const shuffled = [...currentLayer.options].sort(() => 0.5 - Math.random());
         const picked = shuffled.slice(0, count).map((o) => o.id);
         const nextMulti: Record<string, LayerSelectionValue> = {
@@ -201,10 +354,38 @@ export default function Wizard({ onComplete }: WizardProps) {
   };
 
   const generateInitialPrompt = (selectionSnapshot: Record<string, LayerSelectionValue>) => {
-    const descriptivePrompt = buildMasterPrompt(filteredLayers, selectionSnapshot);
+    if (!expertise) {
+      return;
+    }
+    const descriptivePrompt = buildMasterPrompt(filteredLayers, selectionSnapshot, expertise);
     setGeneratedPrompt(descriptivePrompt);
     setGenerationStep('prompt');
     setCurrentStep(filteredLayers.length);
+  };
+
+  const applySmartDefaultsForRest = () => {
+    if (!expertise) {
+      return;
+    }
+    setSelections((prev) => {
+      const draft: Record<string, LayerSelectionValue> = { ...prev };
+      for (let i = currentStep; i < filteredLayers.length; i += 1) {
+        const layer = filteredLayers[i];
+        if (draft[layer.id] !== undefined) {
+          continue;
+        }
+        if (layer.type === 'text' && layer.presets?.[0]) {
+          draft[layer.id] = layer.presets[0];
+        } else if (layer.multiSelect && layer.options[0]) {
+          draft[layer.id] = [layer.options[0].id];
+        } else if (layer.hasRoles && layer.options[0]) {
+          draft[layer.id] = { [layer.options[0].id]: 'lead' };
+        } else if (layer.options[0]) {
+          draft[layer.id] = layer.options[0].id;
+        }
+      }
+      return draft;
+    });
   };
 
   const startGeneration = async () => {
@@ -406,8 +587,29 @@ export default function Wizard({ onComplete }: WizardProps) {
     return null;
   }
 
+  const displayTitle =
+    expertise === 'Beginner' || expertise === 'Intermediate'
+      ? currentLayer.beginnerTitle ?? currentLayer.title
+      : currentLayer.title;
+  const displayQuestion =
+    expertise === 'Beginner' || expertise === 'Intermediate'
+      ? currentLayer.beginnerQuestion ?? currentLayer.question
+      : currentLayer.question;
+  const maxSelections = currentLayer.maxSelections;
+  const selectedCount = Array.isArray(selections[currentLayer.id])
+    ? (selections[currentLayer.id] as string[]).length
+    : currentLayer.hasRoles
+      ? Object.keys((selections[currentLayer.id] as Record<string, string> | undefined) ?? {})
+          .length
+      : 0;
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
+      {chapterIntro && (
+        <div className="mb-6 p-4 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-200">
+          Now entering: {chapterIntro}
+        </div>
+      )}
       <div className="mb-12">
         <div className="flex justify-between items-end mb-4">
           <div>
@@ -428,7 +630,7 @@ export default function Wizard({ onComplete }: WizardProps) {
             <span className="text-gray-500 font-mono text-xs mb-2 block">
               Layer {currentStep + 1} of {filteredLayers.length}
             </span>
-            <h1 className="text-4xl font-bold tracking-tight">{currentLayer.title}</h1>
+            <h1 className="text-4xl font-bold tracking-tight">{displayTitle}</h1>
           </div>
           <div className="flex gap-1">
             {filteredLayers.map((layer, i) => (
@@ -443,11 +645,28 @@ export default function Wizard({ onComplete }: WizardProps) {
           </div>
         </div>
         <p className="text-xl text-gray-400">
-          {currentLayer.question}
+          {displayQuestion}
           {currentLayer.multiSelect && (
             <span className="text-sm text-indigo-400 ml-2">(Select multiple)</span>
           )}
         </p>
+        {currentLayer.layerHint && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setShowLayerHint((prev) => !prev)}
+              className="text-xs text-indigo-300 hover:text-indigo-200"
+            >
+              {showLayerHint ? 'Hide why this matters' : 'Why this matters'}
+            </button>
+            {showLayerHint && (
+              <p className="text-sm text-gray-400 mt-2">{currentLayer.layerHint}</p>
+            )}
+          </div>
+        )}
+        {mixClashHint && currentLayer.id === 'intensity' && (
+          <p className="text-xs text-amber-300 mt-3">{mixClashHint}</p>
+        )}
       </div>
 
       <div className="mb-12">
@@ -480,7 +699,10 @@ export default function Wizard({ onComplete }: WizardProps) {
                 Or try a preset
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {currentLayer.presets?.map((preset) => (
+                {(showAllLyricPresets
+                  ? currentLayer.presets
+                  : currentLayer.presets?.slice(0, 3)
+                )?.map((preset) => (
                   <button
                     key={preset}
                     type="button"
@@ -494,13 +716,22 @@ export default function Wizard({ onComplete }: WizardProps) {
                   </button>
                 ))}
               </div>
+              {(currentLayer.presets?.length ?? 0) > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllLyricPresets((prev) => !prev)}
+                  className="mt-3 text-xs text-indigo-300 hover:text-indigo-200"
+                >
+                  {showAllLyricPresets ? 'Show fewer ideas' : 'Show more ideas'}
+                </button>
+              )}
             </div>
           </motion.div>
         ) : (
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AnimatePresence mode="wait">
-                {currentLayer.options.map((option, index) => {
+                {visibleOptions.map((option, index) => {
                   const isSelected = currentLayer.hasRoles
                     ? !!(selections[currentLayer.id] as Record<string, string> | undefined)?.[
                         option.id
@@ -556,6 +787,7 @@ export default function Wizard({ onComplete }: WizardProps) {
                                     ? 'bg-indigo-600 border-indigo-500'
                                     : 'bg-white/5 border-white/10 hover:bg-white/10',
                                 )}
+                                title={ROLE_HINTS[role]}
                               >
                                 {role}
                               </button>
@@ -583,6 +815,20 @@ export default function Wizard({ onComplete }: WizardProps) {
                 })}
               </AnimatePresence>
             </div>
+            {currentLayer.featuredOptionIds && currentLayer.options.length > visibleOptions.length && (
+              <button
+                type="button"
+                onClick={() => setShowAllOptions((prev) => !prev)}
+                className="text-sm text-indigo-300 hover:text-indigo-200"
+              >
+                {showAllOptions ? 'Show featured only' : 'Show all options'}
+              </button>
+            )}
+            {typeof maxSelections === 'number' && (
+              <p className="text-xs text-gray-400">
+                Selected {selectedCount}/{maxSelections}
+              </p>
+            )}
 
             {(currentLayer.multiSelect || currentLayer.hasRoles) && (
               <div className="flex justify-end">
@@ -619,6 +865,14 @@ export default function Wizard({ onComplete }: WizardProps) {
         >
           <ChevronLeft size={20} />
           Previous Layer
+        </button>
+
+        <button
+          type="button"
+          onClick={applySmartDefaultsForRest}
+          className="px-5 py-4 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 rounded-2xl font-medium transition-all"
+        >
+          Use recommended defaults for the rest
         </button>
 
         <button
