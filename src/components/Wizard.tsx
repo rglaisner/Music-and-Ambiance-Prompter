@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft, Sparkles, Music, RefreshCw, Layers } from 'lucide-react';
 import { MUSIC_LAYERS, ExpertiseLevel } from '../constants/choices';
+import { buildMasterPrompt, type LayerSelectionValue } from '../lib/masterPrompt';
 import { cn } from '../lib/utils';
 import { generateMusic } from '../lib/gemini';
 
@@ -11,8 +12,6 @@ const EXPERTISE_HIERARCHY: Record<ExpertiseLevel, number> = {
   Advanced: 3,
   Expert: 4,
 };
-
-type LayerSelection = string | string[] | Record<string, string>;
 
 interface WizardProps {
   onComplete: (data: {
@@ -36,7 +35,7 @@ async function ensureAiStudioApiKey(): Promise<void> {
 export default function Wizard({ onComplete }: WizardProps) {
   const [expertise, setExpertise] = useState<ExpertiseLevel | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [selections, setSelections] = useState<Record<string, LayerSelection>>({});
+  const [selections, setSelections] = useState<Record<string, LayerSelectionValue>>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState<'prompt' | 'music'>('prompt');
   const [generatedPrompt, setGeneratedPrompt] = useState('');
@@ -102,11 +101,15 @@ export default function Wizard({ onComplete }: WizardProps) {
         : [...current, optionId];
       setSelections((prev) => ({ ...prev, [currentLayer.id]: updated }));
     } else {
-      setSelections((prev) => ({ ...prev, [currentLayer.id]: optionId }));
+      const nextSelections: Record<string, LayerSelectionValue> = {
+        ...selections,
+        [currentLayer.id]: optionId,
+      };
+      setSelections(nextSelections);
       if (currentStep < filteredLayers.length - 1) {
         setCurrentStep((prev) => prev + 1);
       } else {
-        generateInitialPrompt();
+        generateInitialPrompt(nextSelections);
       }
     }
   };
@@ -125,14 +128,22 @@ export default function Wizard({ onComplete }: WizardProps) {
     if (currentStep < filteredLayers.length - 1) {
       setCurrentStep((prev) => prev + 1);
     } else {
-      generateInitialPrompt();
+      generateInitialPrompt(selections);
     }
   };
 
   const handleTextSubmit = (text: string) => {
     if (!text.trim() || !currentLayer) return;
-    setSelections((prev) => ({ ...prev, [currentLayer.id]: text }));
-    handleNext();
+    const nextSelections: Record<string, LayerSelectionValue> = {
+      ...selections,
+      [currentLayer.id]: text,
+    };
+    setSelections(nextSelections);
+    if (currentStep < filteredLayers.length - 1) {
+      setCurrentStep((prev) => prev + 1);
+    } else {
+      generateInitialPrompt(nextSelections);
+    }
   };
 
   const handlePickForMe = () => {
@@ -150,14 +161,30 @@ export default function Wizard({ onComplete }: WizardProps) {
         shuffled.slice(0, count).forEach((o) => {
           picked[o.id] = roles[Math.floor(Math.random() * roles.length)];
         });
-        setSelections((prev) => ({ ...prev, [currentLayer.id]: picked }));
-        handleNext();
+        const nextRoles: Record<string, LayerSelectionValue> = {
+          ...selections,
+          [currentLayer.id]: picked,
+        };
+        setSelections(nextRoles);
+        if (currentStep < filteredLayers.length - 1) {
+          setCurrentStep((prev) => prev + 1);
+        } else {
+          generateInitialPrompt(nextRoles);
+        }
       } else if (currentLayer.multiSelect) {
         const count = Math.floor(Math.random() * 2) + 1;
         const shuffled = [...currentLayer.options].sort(() => 0.5 - Math.random());
         const picked = shuffled.slice(0, count).map((o) => o.id);
-        setSelections((prev) => ({ ...prev, [currentLayer.id]: picked }));
-        handleNext();
+        const nextMulti: Record<string, LayerSelectionValue> = {
+          ...selections,
+          [currentLayer.id]: picked,
+        };
+        setSelections(nextMulti);
+        if (currentStep < filteredLayers.length - 1) {
+          setCurrentStep((prev) => prev + 1);
+        } else {
+          generateInitialPrompt(nextMulti);
+        }
       } else {
         const randomOption =
           currentLayer.options[Math.floor(Math.random() * currentLayer.options.length)];
@@ -166,42 +193,8 @@ export default function Wizard({ onComplete }: WizardProps) {
     }
   };
 
-  const generateInitialPrompt = () => {
-    const promptParts = filteredLayers.map((layer) => {
-      const selection = selections[layer.id];
-
-      if (!selection) return `${layer.title}: Random`;
-
-      if (layer.hasRoles) {
-        const entries = Object.entries(selection as Record<string, string>);
-        const formatted = entries.map(([id, role]) => {
-          const label = layer.options.find((o) => o.id === id)?.label || id;
-          return `${label} (${role})`;
-        });
-        return `${layer.title}: ${formatted.join(', ')}`;
-      }
-
-      if (Array.isArray(selection)) {
-        const labels = selection.map(
-          (id) => layer.options.find((o) => o.id === id)?.label || id,
-        );
-        return `${layer.title}: ${labels.join(' & ')}`;
-      }
-
-      if (layer.type === 'text') {
-        return `${layer.title}: ${selection}`;
-      }
-
-      const option = layer.options.find((o) => o.id === selection);
-      return `${layer.title}: ${option?.label || selection}`;
-    });
-
-    const descriptivePrompt = `Generate a full-length music track with the following architectural specifications:
-${promptParts.join('\n')}. 
-
-The track should be a cohesive masterpiece that captures the essence of these choices. 
-If lyrics are included, they should be in the specified language and theme, following the narrative and keywords provided.`;
-
+  const generateInitialPrompt = (selectionSnapshot: Record<string, LayerSelectionValue>) => {
+    const descriptivePrompt = buildMasterPrompt(filteredLayers, selectionSnapshot);
     setGeneratedPrompt(descriptivePrompt);
     setGenerationStep('prompt');
     setCurrentStep(filteredLayers.length);
