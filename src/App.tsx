@@ -119,7 +119,7 @@ export default function App() {
                 transition={{ delay: 0.2 }}
                 className="text-6xl md:text-8xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent"
               >
-                Sonic Architect
+                Zik Architect
               </motion.h1>
 
               <motion.p
@@ -128,8 +128,8 @@ export default function App() {
                 transition={{ delay: 0.3 }}
                 className="text-xl text-gray-400 mb-12 leading-relaxed"
               >
-                Architect full-length music tracks through a layered cascading choice system.
-                Listen back in a focused player with lyrics.
+                Architect full-length music tracks through a cascading choice system.
+                Listen in a focused player with lyrics.
               </motion.p>
 
               <motion.button
