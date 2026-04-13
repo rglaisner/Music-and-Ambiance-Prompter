@@ -67,28 +67,3 @@ export async function generateMusic(
 
   return { audioUrl, lyrics, blob };
 }
-
-export async function generateAmbiance(musicDescription: string) {
-  const response = await fetch('/api/ambiance', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: musicDescription }),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response));
-  }
-
-  interface AmbiancePayload {
-    imageDataUrl?: unknown;
-  }
-
-  const payload = (await response.json()) as AmbiancePayload;
-  const imageDataUrl =
-    typeof payload.imageDataUrl === 'string' ? payload.imageDataUrl : '';
-  if (!imageDataUrl) {
-    throw new Error('No image data received from the server.');
-  }
-
-  return imageDataUrl;
-}

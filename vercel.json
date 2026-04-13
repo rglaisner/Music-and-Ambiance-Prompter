@@ -3,9 +3,6 @@
   "functions": {
     "api/music.ts": {
       "maxDuration": 300
-    },
-    "api/ambiance.ts": {
-      "maxDuration": 120
     }
   }
 }

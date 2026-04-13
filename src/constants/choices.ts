@@ -1,3 +1,5 @@
+export type ExpertiseLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+
 export interface ChoiceOption {
   id: string;
   label: string;
@@ -12,6 +14,7 @@ export interface ChoiceLayer {
   group: 'Core Architecture' | 'Instrumentation' | 'Vocal Architecture' | 'Final Mix';
   multiSelect?: boolean;
   hasRoles?: boolean;
+  minExpertise: ExpertiseLevel;
   options: ChoiceOption[];
   presets?: string[]; // For text type "pick for me"
 }
@@ -24,6 +27,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     question: "What is the foundation of your sound?",
     group: 'Core Architecture',
     multiSelect: true,
+    minExpertise: 'Beginner',
     options: [
       { id: "electronic", label: "Electronic", description: "Synthesizers, drum machines, and digital textures." },
       { id: "rock", label: "Rock", description: "Electric guitars, powerful drums, and raw energy." },
@@ -45,6 +49,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     question: "Narrow down the specific sub-genre or style.",
     group: 'Core Architecture',
     multiSelect: true,
+    minExpertise: 'Intermediate',
     options: [
       { id: "synthwave", label: "Synthwave / Retro-Future", description: "80s nostalgia with a futuristic twist." },
       { id: "techno", label: "Techno / Industrial", description: "Repetitive, driving beats for the dancefloor." },
@@ -65,6 +70,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     title: "Intensity & Pace",
     question: "How fast and energetic should the track be?",
     group: 'Core Architecture',
+    minExpertise: 'Beginner',
     options: [
       { id: "ambient", label: "Ambient & Ethereal", description: "Slow (60-80 BPM), low intensity, and spacious." },
       { id: "chill", label: "Chill & Mellow", description: "Moderate (90-100 BPM), relaxed but steady pulse." },
@@ -79,6 +85,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     question: "What is the core emotional arc of the music and lyrics?",
     group: 'Core Architecture',
     multiSelect: true,
+    minExpertise: 'Beginner',
     options: [
       { id: "melancholic", label: "Melancholic & Vulnerable", description: "Sad, reflective, and rawly exposed." },
       { id: "euphoric", label: "Euphoric & Awe-struck", description: "Joyful, triumphant, and overwhelmed by beauty." },
@@ -94,6 +101,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     title: "Compositional Depth",
     question: "How intricate should the musical and harmonic foundation be?",
     group: 'Core Architecture',
+    minExpertise: 'Advanced',
     options: [
       { id: "simple-major", label: "Simple & Bright (Major)", description: "Easy to follow, happy, and clear." },
       { id: "moderate-minor", label: "Moderate & Serious (Minor)", description: "Balanced, mysterious, and emotive." },
@@ -108,6 +116,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     question: "Which time period or regional flavor should it echo?",
     group: 'Core Architecture',
     multiSelect: true,
+    minExpertise: 'Intermediate',
     options: [
       { id: "modern-global", label: "Modern & Global", description: "The sound of today, neutral and polished." },
       { id: "80s-retro", label: "80s Retro / Neon", description: "Vintage synths and big gated drums." },
@@ -128,6 +137,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     group: 'Instrumentation',
     multiSelect: true,
     hasRoles: true,
+    minExpertise: 'Intermediate',
     options: [
       { id: "synths-digital", label: "Synthesizers & Digital", description: "Analog leads, digital pads, and bass synths." },
       { id: "orchestral-strings", label: "Orchestral & Strings", description: "Grand brass, woodwinds, and backing strings." },
@@ -145,6 +155,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     question: "Define the character and delivery of the voice.",
     group: 'Vocal Architecture',
     multiSelect: true,
+    minExpertise: 'Beginner',
     options: [
       { id: "none", label: "Purely Instrumental", description: "No vocals, focus on the music." },
       { id: "male-warm", label: "Male (Warm & Resonant)", description: "Deep, comforting, or soaring male voice." },
@@ -161,6 +172,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     title: "Lyrics Language",
     question: "In what tongue should the story be told?",
     group: 'Vocal Architecture',
+    minExpertise: 'Intermediate',
     options: [
       { id: "english", label: "English", description: "Universal and widely understood." },
       { id: "spanish", label: "Spanish", description: "Rhythmic, passionate, and vibrant." },
@@ -183,6 +195,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     question: "Describe the story, themes, and specific imagery you want in the lyrics in detail.",
     group: 'Vocal Architecture',
     type: 'text',
+    minExpertise: 'Beginner',
     options: [],
     presets: [
       "A lonely astronaut looking back at a dying Earth. Keywords: Neon, rain, echoes, shadows, chrome.",
@@ -198,6 +211,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     title: "Lyric Style",
     question: "What is the structural and narrative approach of the lyrics?",
     group: 'Vocal Architecture',
+    minExpertise: 'Advanced',
     options: [
       { id: "storytelling", label: "Storytelling", description: "A clear narrative arc with characters and events." },
       { id: "abstract-poetry", label: "Abstract Poetry", description: "Focus on metaphor, symbolism, and evocative imagery." },
@@ -211,6 +225,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     title: "Vocal Perspective & Style",
     question: "How are the words delivered and to whom?",
     group: 'Vocal Architecture',
+    minExpertise: 'Expert',
     options: [
       { id: "first-person-literal", label: "First Person & Direct", description: "Personal, honest, and straightforward." },
       { id: "second-person-metaphor", label: "Second Person & Metaphorical", description: "Addressing 'you' with rich symbolism." },
@@ -224,6 +239,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     title: "Content Rating",
     question: "What is the lyrical intensity and explicitness?",
     group: 'Vocal Architecture',
+    minExpertise: 'Advanced',
     options: [
       { id: "clean", label: "Clean / All Ages", description: "Safe for everyone, no profanity." },
       { id: "mild", label: "Mild / Suggestive", description: "Some mature themes, no explicit language." },
@@ -235,6 +251,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     title: "Beatbox & Percussion",
     question: "Should human percussion or unique beats be integrated?",
     group: 'Vocal Architecture',
+    minExpertise: 'Expert',
     options: [
       { id: "none", label: "Standard Percussion", description: "Traditional drum sounds only." },
       { id: "subtle-beatbox", label: "Subtle Beatbox Accents", description: "Human breath and clicks in the background." },
@@ -249,6 +266,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     title: "Compositional Form",
     question: "How should the track be structured and arranged?",
     group: 'Final Mix',
+    minExpertise: 'Advanced',
     options: [
       { id: "verse-chorus-layered", label: "Verse-Chorus & Layered", description: "Catchy, rich, and densely organized." },
       { id: "aaba-sparse", label: "AABA & Sparse", description: "Standard form with lots of space." },
@@ -262,6 +280,7 @@ export const MUSIC_LAYERS: ChoiceLayer[] = [
     title: "Sonic Texture & Dynamics",
     question: "What are the final production and dynamic characteristics?",
     group: 'Final Mix',
+    minExpertise: 'Expert',
     options: [
       { id: "hifi-compressed", label: "High-Fi & Compressed", description: "Crystal clear, polished, and loud." },
       { id: "lofi-dynamic", label: "Lo-fi & Dynamic", description: "Warm, grainy, with a natural volume range." },

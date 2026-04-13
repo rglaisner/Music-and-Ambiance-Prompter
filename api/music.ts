@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { parseJsonBody, requireApiKey, sendError } from '../lib/server/http';
 
@@ -70,7 +70,10 @@ export default async function handler(
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContentStream({
       model: modelName,
-      contents: prompt,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+      },
     });
 
     let audioBase64 = '';
