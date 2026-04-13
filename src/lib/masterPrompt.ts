@@ -243,7 +243,7 @@ export function buildMasterPrompt(
     : '';
 
   const durationBlock =
-    "**Duration:** Create a full track about **2:30–2:55** (hard cap ~2:55 / ~175s) so delivery stays within app limits; do not exceed ~3 minutes.\n**Output:** Professional stereo mix, cohesive arrangement, intentional dynamics.";
+    "**Duration:** Create a full track about **2:30–3:10** (hard cap ~3:15 / ~195s) so delivery stays within app limits; do not exceed ~3:15 minutes.\n**Output:** Professional stereo mix, cohesive arrangement, intentional dynamics.";
 
   const lyricDirectionBlock = hasLyricBrief
     ? `
@@ -252,7 +252,7 @@ export function buildMasterPrompt(
 ### Creative direction for lyrics (not fixed script)
 ${String(lyricRaw).trim()}
 
-When generating lyrics, reflect this imagery and narrative, honor the vocal identity and language above, and use section tags ([Verse], [Chorus], etc.) in the timed lyric output unless the track is instrumental.`
+When generating lyrics, reflect this narrative, honor the vocal identity and language above, and use section tags ([Verse], [Chorus], etc.) in the timed lyric output unless the track is instrumental.`
     : !instrumental
       ? `
 
