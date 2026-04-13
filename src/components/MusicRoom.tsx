@@ -1,12 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play, Pause, Download, Volume2, VolumeX, Music, ArrowLeft } from 'lucide-react';
+import {
+  clearDownloadedMark,
+  clearStoredBlobPathname,
+  deleteBlobOnServer,
+  hasMarkedDownloaded,
+  markDownloadedInSession,
+} from '../lib/blobSession';
 
 interface MusicRoomProps {
   audioUrl: string;
   lyrics: string;
   prompt: string;
-  blob: Blob;
+  blob: Blob | null;
+  blobPathname: string;
   onBack: () => void;
 }
 
@@ -15,6 +23,7 @@ export default function MusicRoom({
   lyrics,
   prompt,
   blob,
+  blobPathname,
   onBack,
 }: MusicRoomProps) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -23,6 +32,11 @@ export default function MusicRoom({
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [showLyrics, setShowLyrics] = useState(true);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [hasDownloaded, setHasDownloaded] = useState(() =>
+    blobPathname ? hasMarkedDownloaded(blobPathname) : false,
+  );
+  const [leaveBusy, setLeaveBusy] = useState(false);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -42,6 +56,14 @@ export default function MusicRoom({
       }
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (audioUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, [audioUrl]);
 
   const toggleMute = () => {
     if (audioRef.current) {
@@ -68,19 +90,133 @@ export default function MusicRoom({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const runDownloadToDisk = async (): Promise<void> => {
+    let fileBlob = blob;
+    if (!fileBlob) {
+      const response = await fetch(audioUrl);
+      if (!response.ok) {
+        throw new Error('Could not download audio.');
+      }
+      fileBlob = await response.blob();
+    }
+    const objectUrl = URL.createObjectURL(fileBlob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = 'sonic-architect-track.mp3';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(objectUrl);
+    setHasDownloaded(true);
+    if (blobPathname) {
+      markDownloadedInSession(blobPathname);
+    }
+  };
+
   const downloadMusic = () => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'sonic-architect-track.mp3';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    void runDownloadToDisk().catch((error: unknown) => {
+      console.error(error);
+    });
+  };
+
+  const finalizeLeave = async (): Promise<void> => {
+    setLeaveBusy(true);
+    try {
+      if (blobPathname) {
+        try {
+          await deleteBlobOnServer(blobPathname);
+        } catch (error: unknown) {
+          console.error('[MusicRoom] blob delete', error);
+        }
+        clearStoredBlobPathname();
+        clearDownloadedMark(blobPathname);
+      }
+      if (audioUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(audioUrl);
+      }
+      setShowLeaveModal(false);
+      onBack();
+    } finally {
+      setLeaveBusy(false);
+    }
+  };
+
+  const handleBackClick = () => {
+    if (hasDownloaded) {
+      void finalizeLeave();
+      return;
+    }
+    setShowLeaveModal(true);
+  };
+
+  const handleDownloadAndLeave = async () => {
+    try {
+      await runDownloadToDisk();
+    } catch (error: unknown) {
+      console.error(error);
+      return;
+    }
+    await finalizeLeave();
   };
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden">
+      <AnimatePresence>
+        {showLeaveModal && (
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="leave-modal-title"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="max-w-md w-full bg-gray-900 border border-white/10 rounded-3xl p-8 shadow-2xl"
+            >
+              <h2 id="leave-modal-title" className="text-2xl font-bold mb-3">
+                Leave without saving?
+              </h2>
+              <p className="text-gray-400 mb-6 leading-relaxed">
+                The hosted track will be removed from the server. If you have not downloaded it yet,
+                you will lose access to this recording. You can download it now and then leave, or
+                leave without saving.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  disabled={leaveBusy}
+                  onClick={() => void handleDownloadAndLeave()}
+                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-2xl font-bold transition-colors"
+                >
+                  Download and start over
+                </button>
+                <button
+                  type="button"
+                  disabled={leaveBusy}
+                  onClick={() => void finalizeLeave()}
+                  className="w-full py-4 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 rounded-2xl font-semibold transition-colors"
+                >
+                  Start over without saving
+                </button>
+                <button
+                  type="button"
+                  disabled={leaveBusy}
+                  onClick={() => setShowLeaveModal(false)}
+                  className="w-full py-3 text-white/60 hover:text-white text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px]" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px]" />
@@ -91,7 +227,7 @@ export default function MusicRoom({
         <header className="p-6 flex justify-between items-center backdrop-blur-md bg-black/20 border-b border-white/5">
           <button
             type="button"
-            onClick={onBack}
+            onClick={() => void handleBackClick()}
             className="flex items-center gap-2 text-white/70 hover:text-white transition-colors group"
           >
             <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />

@@ -4,6 +4,12 @@ import { ChevronRight, ChevronLeft, Sparkles, Music, RefreshCw, Layers } from 'l
 import { MUSIC_LAYERS, ExpertiseLevel } from '../constants/choices';
 import { buildMasterPrompt, type LayerSelectionValue } from '../lib/masterPrompt';
 import { cn } from '../lib/utils';
+import {
+  clearStoredBlobPathname,
+  deleteBlobOnServer,
+  getStoredBlobPathname,
+  setStoredBlobPathname,
+} from '../lib/blobSession';
 import { generateMusic } from '../lib/gemini';
 
 const EXPERTISE_HIERARCHY: Record<ExpertiseLevel, number> = {
@@ -18,7 +24,8 @@ interface WizardProps {
     audioUrl: string;
     lyrics: string;
     prompt: string;
-    blob: Blob;
+    blob: Blob | null;
+    blobPathname: string;
   }) => void;
 }
 
@@ -206,14 +213,29 @@ export default function Wizard({ onComplete }: WizardProps) {
     setIsGenerating(true);
     setError(null);
     try {
+      const previousPathname = getStoredBlobPathname();
+      if (previousPathname) {
+        try {
+          await deleteBlobOnServer(previousPathname);
+        } catch {
+          /* previous object may already be gone */
+        }
+        clearStoredBlobPathname();
+      }
+
       setGenerationStep('music');
       const musicResult = await generateMusic(generatedPrompt);
+
+      if (musicResult.blobPathname) {
+        setStoredBlobPathname(musicResult.blobPathname);
+      }
 
       onComplete({
         audioUrl: musicResult.audioUrl,
         lyrics: musicResult.lyrics,
         prompt: generatedPrompt,
         blob: musicResult.blob,
+        blobPathname: musicResult.blobPathname,
       });
     } catch (err) {
       console.error(err);

@@ -3,6 +3,9 @@
   "functions": {
     "api/music.ts": {
       "maxDuration": 300
+    },
+    "api/blob-delete.ts": {
+      "maxDuration": 60
     }
   }
 }

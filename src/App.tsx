@@ -8,7 +8,8 @@ interface GeneratedData {
   audioUrl: string;
   lyrics: string;
   prompt: string;
-  blob: Blob;
+  blob: Blob | null;
+  blobPathname: string;
 }
 
 declare global {
@@ -168,7 +169,13 @@ export default function App() {
             exit={{ opacity: 0 }}
             className="min-h-screen"
           >
-            <MusicRoom {...generatedData} onBack={() => setView('landing')} />
+            <MusicRoom
+              {...generatedData}
+              onBack={() => {
+                setGeneratedData(null);
+                setView('landing');
+              }}
+            />
           </motion.div>
         )}
       </AnimatePresence>

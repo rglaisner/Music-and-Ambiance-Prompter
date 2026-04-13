@@ -57,7 +57,11 @@ export function buildMasterPrompt(
 ): string {
   const lines = layers.map((layer) => formatLayerLine(layer, selections[layer.id]));
 
-  const header = `Generate a full-length music track with the following architectural specifications. Only the layers below apply (they match the user's chosen expertise level; any category not listed was out of scope for this session):\n\n`;
+  const header = `Generate a complete, structured music track with the following architectural specifications. Only the layers below apply (they match the user's chosen expertise level; any category not listed was out of scope for this session):
+
+**Duration:** Keep the finished audio to at most approximately **2 minutes 55 seconds** total (about 175 seconds). Aim for a ~2:30–2:55 runtime so the full MP3 stays within the app's delivery size limit—do not exceed ~3 minutes.
+
+`;
 
   let body = lines.join('\n');
 
