@@ -2,7 +2,6 @@
 
 Playing around making zik. This repo contains the Vite + React app; Gemini calls run on Vercel serverless so the API key stays server-side.
 
-View your app in AI Studio: https://ai.studio/apps/eb27641d-f21d-4a2d-8ea8-b99855a68d74
 
 ## Run Locally
 
